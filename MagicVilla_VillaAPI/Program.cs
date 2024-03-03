@@ -159,6 +159,7 @@ if (app.Environment.IsDevelopment())
         options.SwaggerEndpoint("/swagger/v1/swagger.json", "Magic_VillaV1");
     });
 }
+app.UseStaticFiles();
 
 app.UseHttpsRedirection();
 
