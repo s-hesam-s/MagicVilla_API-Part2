@@ -326,10 +326,6 @@ namespace MagicVilla_VillaAPI.Controllers.V2
                     model.ImageUrl = baseUrl + "/ProductImage/" + fileName;
                     model.ImageLocalPath = filePath;
                 }
-                else
-                {
-                    model.ImageUrl = "https://placehold.co/600x400";
-                }
 
                 await _dbVilla.UpdateAsync(model);
 
