@@ -142,6 +142,10 @@ namespace MagicVilla_Web.Services
                 var returnObj = JsonConvert.DeserializeObject<T>(res);
                 return returnObj;
             }
+            catch (AuthException)
+            {
+                throw;
+            }
             catch (Exception e)
             {
                 var dto = new APIResponse
@@ -187,6 +191,10 @@ namespace MagicVilla_Web.Services
 
                     return response;
                 }
+                catch (AuthException)
+                {
+                    throw;
+                }
                 catch (HttpRequestException httpRequestException)
                 {
                     if (httpRequestException.StatusCode == System.Net.HttpStatusCode.Unauthorized)
@@ -221,6 +229,7 @@ namespace MagicVilla_Web.Services
             {
                 await _httpContextAccessor.HttpContext.SignOutAsync();
                 _tokenProvider.ClearToken();
+                throw new AuthException();
             }
             else
             {
