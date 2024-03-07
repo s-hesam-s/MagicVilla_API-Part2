@@ -100,6 +100,12 @@ namespace MagicVilla_VillaAPI.Repository
             return new UserDTO();
         }
 
+        public Task<TokenDTO> RefreshAccessToken(TokenDTO tokenDTO)
+        {
+            throw new NotImplementedException();
+        }
+
+
         private async Task<string> GetAccessToken(ApplicationUser user)
         {
             var roles = await _userManager.GetRolesAsync(user);
