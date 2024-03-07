@@ -119,6 +119,7 @@ namespace MagicVilla_VillaAPI.Repository
             {
                 existingRefreshToken.IsValid = false;
                 _db.SaveChanges();
+                return new TokenDTO();
             }
 
             // When someone tries to use not valid refresh token, fraud possible
@@ -128,6 +129,7 @@ namespace MagicVilla_VillaAPI.Repository
             {
                 existingRefreshToken.IsValid = false;
                 _db.SaveChanges();
+                return new TokenDTO();
             }
 
             // replace old refresh with a new one with updated expire date
