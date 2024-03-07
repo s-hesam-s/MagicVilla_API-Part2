@@ -103,22 +103,54 @@ namespace MagicVilla_VillaAPI.Repository
             return new UserDTO();
         }
 
-        public Task<TokenDTO> RefreshAccessToken(TokenDTO tokenDTO)
+        public async Task<TokenDTO> RefreshAccessToken(TokenDTO tokenDTO)
         {
             // Find an existing refresh token
+            var existingRefreshToken = await _db.RefreshTokens.FirstOrDefaultAsync(u => u.Refresh_Token == tokenDTO.RefreshToken);
+            if (existingRefreshToken == null)
+            {
+                return new TokenDTO();
+            }
 
             // Compare data from existing refresh and access token provided and if there is any missmatch then consider it as a fraud
+            var accessTokenData = GetAccessTokenData(tokenDTO.AccessToken);
+            if (!accessTokenData.isSuccessful || accessTokenData.userId != existingRefreshToken.UserId
+                || accessTokenData.tokenId != existingRefreshToken.JwtTokenId)
+            {
+                existingRefreshToken.IsValid = false;
+                _db.SaveChanges();
+            }
 
             // When someone tries to use not valid refresh token, fraud possible
 
             // If just expired then mark as invalid and return empty
+            if (existingRefreshToken.ExpiresAt < DateTime.UtcNow)
+            {
+                existingRefreshToken.IsValid = false;
+                _db.SaveChanges();
+            }
 
             // replace old refresh with a new one with updated expire date
+            var newRefreshToken = await CreateNewRefreshToken(existingRefreshToken.UserId, existingRefreshToken.JwtTokenId);
 
             // revoke existing refresh token
+            existingRefreshToken.IsValid = false;
+            _db.SaveChanges();
 
             // generate new access token
+            var applicationUser = _db.ApplicationUsers.FirstOrDefault(u => u.Id == existingRefreshToken.UserId);
+            if (applicationUser == null)
+                return new TokenDTO();
+
+            var newAccessToken = await GetAccessToken(applicationUser, existingRefreshToken.JwtTokenId);
+
+            return new TokenDTO()
+            {
+                AccessToken = newAccessToken,
+                RefreshToken = newRefreshToken,
+            };
         }
+
 
 
         private async Task<string> GetAccessToken(ApplicationUser user, string jwtTokenId)
