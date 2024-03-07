@@ -51,12 +51,6 @@ namespace MagicVilla_Web.Services
 
                     message.RequestUri = new Uri(apiRequest.Url);
 
-                    if (withBearer && _tokenProvider.GetToken() != null)
-                    {
-                        var token = _tokenProvider.GetToken();
-                        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token.AccessToken);
-                    }
-
                     if (apiRequest.ContentType == ContentType.MultipartFormData)
                     {
                         var content = new MultipartFormDataContent();
