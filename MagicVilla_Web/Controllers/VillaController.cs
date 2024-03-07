@@ -51,8 +51,14 @@ namespace MagicVilla_Web.Controllers
                     TempData["success"] = "Villa created successfully";
                     return RedirectToAction(nameof(IndexVilla));
                 }
+                else
+                {
+                    TempData["error"] = (response.ErrorMessages != null && response.ErrorMessages.Count > 0) ?
+                        response.ErrorMessages[0] : "Error Encountered";
+                }
             }
-            TempData["error"] = "Error encountered.";
+            else
+                TempData["error"] = "Error encountered.";
 
             return View(model);
         }
@@ -65,6 +71,11 @@ namespace MagicVilla_Web.Controllers
             {
                 VillaDTO model = JsonConvert.DeserializeObject<VillaDTO>(Convert.ToString(response.Result));
                 return View(_mapper.Map<VillaUpdateDTO>(model));
+            }
+            else
+            {
+                TempData["error"] = (response.ErrorMessages != null && response.ErrorMessages.Count > 0) ?
+                    response.ErrorMessages[0] : "Error Encountered";
             }
 
             return NotFound();
@@ -83,8 +94,14 @@ namespace MagicVilla_Web.Controllers
                     TempData["success"] = "Villa updated successfully";
                     return RedirectToAction(nameof(IndexVilla));
                 }
+                else
+                {
+                    TempData["error"] = (response.ErrorMessages != null && response.ErrorMessages.Count > 0) ?
+                        response.ErrorMessages[0] : "Error Encountered";
+                }
             }
-            TempData["error"] = "Error encountered.";
+            else
+                TempData["error"] = "Error encountered.";
 
             return View(model);
         }
@@ -97,6 +114,11 @@ namespace MagicVilla_Web.Controllers
             {
                 VillaDTO model = JsonConvert.DeserializeObject<VillaDTO>(Convert.ToString(response.Result));
                 return View(model);
+            }
+            else
+            {
+                TempData["error"] = (response.ErrorMessages != null && response.ErrorMessages.Count > 0) ?
+                    response.ErrorMessages[0] : "Error Encountered";
             }
 
             return NotFound();
@@ -113,7 +135,11 @@ namespace MagicVilla_Web.Controllers
                 TempData["success"] = "Villa deleted successfully";
                 return RedirectToAction(nameof(IndexVilla));
             }
-            TempData["error"] = "Error encountered.";
+            else
+            {
+                TempData["error"] = (response.ErrorMessages != null && response.ErrorMessages.Count > 0) ?
+                    response.ErrorMessages[0] : "Error Encountered";
+            }
 
             return View(model);
         }
