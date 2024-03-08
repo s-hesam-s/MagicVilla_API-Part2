@@ -38,7 +38,13 @@ builder.Services.AddControllers(option =>
     //   });
     //option.ReturnHttpNotAcceptable = true;
     option.Filters.Add<CustomExceptionFilter>();
-}).AddNewtonsoftJson().AddXmlDataContractSerializerFormatters();
+}).AddNewtonsoftJson().AddXmlDataContractSerializerFormatters().ConfigureApiBehaviorOptions(option =>
+{
+    option.ClientErrorMapping[StatusCodes.Status500InternalServerError] = new ClientErrorData
+    {
+        Link = "https://hesamshoushtarian.com/500"
+    };
+});
 
 builder.Services.AddAutoMapper(typeof(MappingConfig));
 
@@ -100,14 +106,16 @@ app.UseSwagger();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwaggerUI(options => {
+    app.UseSwaggerUI(options =>
+    {
         options.SwaggerEndpoint("/swagger/v2/swagger.json", "Magic_VillaV2");
         options.SwaggerEndpoint("/swagger/v1/swagger.json", "Magic_VillaV1");
     });
 }
 else
 {
-    app.UseSwaggerUI(options => {
+    app.UseSwaggerUI(options =>
+    {
         options.SwaggerEndpoint("/swagger/v2/swagger.json", "Magic_VillaV2");
         options.SwaggerEndpoint("/swagger/v1/swagger.json", "Magic_VillaV1");
         options.RoutePrefix = "";
