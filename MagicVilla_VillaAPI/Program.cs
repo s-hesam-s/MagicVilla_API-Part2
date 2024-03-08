@@ -111,6 +111,9 @@ else
         options.RoutePrefix = "";
     });
 }
+
+app.UseExceptionHandler("/ErrorHandling/ProcessError");
+
 app.UseStaticFiles();
 
 app.UseHttpsRedirection();
