@@ -14,6 +14,7 @@ using MagicVilla_VillaAPI.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Swashbuckle.AspNetCore.SwaggerGen;
+using MagicVilla_VillaAPI.Filters;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -36,6 +37,7 @@ builder.Services.AddControllers(option =>
     //       Duration = 30
     //   });
     //option.ReturnHttpNotAcceptable = true;
+    option.Filters.Add<CustomExceptionFilter>();
 }).AddNewtonsoftJson().AddXmlDataContractSerializerFormatters();
 
 builder.Services.AddAutoMapper(typeof(MappingConfig));
