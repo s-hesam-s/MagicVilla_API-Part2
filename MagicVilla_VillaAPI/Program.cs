@@ -18,6 +18,7 @@ using MagicVilla_VillaAPI.Filters;
 using Microsoft.AspNetCore.Diagnostics;
 using Newtonsoft.Json;
 using MagicVilla_VillaAPI.Extensions;
+using MagicVilla_VillaAPI.Middlewares;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -126,7 +127,8 @@ else
 }
 
 //app.UseExceptionHandler("/ErrorHandling/ProcessError");
-app.HandleError(app.Environment.IsDevelopment());
+//app.HandleError(app.Environment.IsDevelopment());
+app.UseMiddleware<CustomExceptionMiddleware>();
 
 app.UseStaticFiles();
 
