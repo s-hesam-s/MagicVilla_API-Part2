@@ -85,14 +85,23 @@ namespace MagicVilla_VillaAPI.Repository
                 var result = await _userManager.CreateAsync(user, registerationRequestDTO.Password);
                 if (result.Succeeded)
                 {
-                    if (!_roleManager.RoleExistsAsync(registerationRequestDTO.Role).GetAwaiter().GetResult())
+                    const string customerRole = "customer";
+                    if (!await _roleManager.RoleExistsAsync(customerRole))
                     {
-                        await _roleManager.CreateAsync(new IdentityRole(registerationRequestDTO.Role));
+                        var roleResult = await _roleManager.CreateAsync(new IdentityRole(customerRole));
+                        if (!roleResult.Succeeded)
+                        {
+                            await _userManager.DeleteAsync(user);
+                            return null;
+                        }
                     }
-                    await _userManager.AddToRoleAsync(user, registerationRequestDTO.Role);
-                    var userToReturn = _db.ApplicationUsers
-                        .FirstOrDefault(u => u.UserName == registerationRequestDTO.UserName);
-                    return _mapper.Map<UserDTO>(userToReturn);
+                    var assignmentResult = await _userManager.AddToRoleAsync(user, customerRole);
+                    if (!assignmentResult.Succeeded)
+                    {
+                        await _userManager.DeleteAsync(user);
+                        return null;
+                    }
+                    return _mapper.Map<UserDTO>(user);
                 }
             }
             catch (Exception e)

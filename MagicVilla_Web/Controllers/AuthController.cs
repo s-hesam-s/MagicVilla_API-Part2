@@ -63,7 +63,6 @@ namespace MagicVilla_Web.Controllers
         {
             var roleList = new List<SelectListItem>()
             {
-                new SelectListItem{Text=SD.Admin,Value=SD.Admin},
                 new SelectListItem{Text=SD.Customer,Value=SD.Customer},
             };
             ViewBag.RoleList = roleList;
@@ -87,7 +86,6 @@ namespace MagicVilla_Web.Controllers
 
             var roleList = new List<SelectListItem>()
             {
-                new SelectListItem{Text=SD.Admin,Value=SD.Admin},
                 new SelectListItem{Text=SD.Customer,Value=SD.Customer},
             };
             ViewBag.RoleList = roleList;
