@@ -1,0 +1,19 @@
+# Manual reads only. Start no host from this file.
+# Review ../WALKTHROUGH.md before using an approved development environment.
+@api = https://localhost:7001
+
+### Unchanged model seed includes Royal Villa, ID 1.
+GET {{api}}/api/v1/VillaAPI/1
+Accept: application/json
+
+### V1 occupancy filter and repository pagination.
+GET {{api}}/api/v1/VillaAPI?filterOccupancy=4&pageSize=2&pageNumber=1
+Accept: application/json
+
+### Equivalent V2 collection route.
+GET {{api}}/api/v2/VillaAPI?filterOccupancy=4&pageSize=2&pageNumber=1
+Accept: application/json
+
+### ID zero takes the explicit bad-request branch.
+GET {{api}}/api/v1/VillaAPI/0
+Accept: application/json
