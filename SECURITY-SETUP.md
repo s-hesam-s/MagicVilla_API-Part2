@@ -27,3 +27,5 @@ Historical commits may still contain previous training values. If a value was ev
 Run `dotnet test tests/Authorization.Tests/Authorization.Tests.csproj`. The tests replace Identity managers with mocks and never start the application or connect to a database, payment provider or messaging service.
 
 Run `pwsh -File scripts/Test-PublicConfiguration.ps1` to check public configuration without displaying values.
+
+Browser, upload and token/payment boundaries are documented in [Security boundaries](docs/SECURITY-BOUNDARIES.md). Production host startup, database changes and live providers are not required by the isolated regression suite.

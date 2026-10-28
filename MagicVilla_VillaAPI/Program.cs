@@ -33,6 +33,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(option =>
     option.UseSqlServer(builder.Configuration.GetConnectionString("DefaultSQLConnection"));
 });
 
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options => options.MultipartBodyLengthLimit = 3 * 1024 * 1024);
 builder.Services.AddControllers(option =>
 {
     //option.CacheProfiles.Add("Default30",
@@ -130,6 +131,7 @@ else
 //app.HandleError(app.Environment.IsDevelopment());
 app.UseMiddleware<CustomExceptionMiddleware>();
 
+app.Use(async (context, next) => { context.Response.Headers["X-Content-Type-Options"] = "nosniff"; await next(); });
 app.UseStaticFiles();
 
 app.UseHttpsRedirection();

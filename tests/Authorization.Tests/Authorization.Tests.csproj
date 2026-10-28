@@ -12,9 +12,11 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="8.0.15" />
     <PackageReference Include="Moq" Version="4.20.72" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="../../MagicVilla_Web/MagicVilla_Web.csproj" />
     <ProjectReference Include="../../MagicVilla_VillaAPI/MagicVilla_VillaAPI.csproj" />
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>

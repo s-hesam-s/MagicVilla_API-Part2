@@ -59,8 +59,8 @@ namespace MagicVilla_VillaAPI.Repository
 
             //if user was found generate JWT Token
             var jwtTokenId = $"JTI{Guid.NewGuid()}";
-            var accessToken = await GetAccessToken(user, jwtTokenId);
-            var refreshToken = await CreateNewRefreshToken(user.Id, jwtTokenId);
+            var accessToken = await getAccessToken(user, jwtTokenId);
+            var refreshToken = await createNewRefreshToken(user.Id, jwtTokenId);
 
             TokenDTO tokenDto = new()
             {
@@ -114,21 +114,21 @@ namespace MagicVilla_VillaAPI.Repository
 
         public async Task<TokenDTO> RefreshAccessToken(TokenDTO tokenDTO)
         {
+            if (tokenDTO == null || string.IsNullOrWhiteSpace(tokenDTO.AccessToken) || string.IsNullOrWhiteSpace(tokenDTO.RefreshToken)) return new TokenDTO();
+
             // Find an existing refresh token
-            var existingRefreshToken = await _db.RefreshTokens.FirstOrDefaultAsync(u => u.Refresh_Token == tokenDTO.RefreshToken);
+            await using var transaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            var existingRefreshToken = await _db.RefreshTokens.FromSqlInterpolated(
+                $"SELECT * FROM [RefreshTokens] WITH (UPDLOCK, HOLDLOCK) WHERE [Refresh_Token] = {tokenDTO.RefreshToken}")
+                .SingleOrDefaultAsync();
             if (existingRefreshToken == null)
             {
                 return new TokenDTO();
             }
 
             // Compare data from existing refresh and access token provided and if there is any missmatch then consider it as a fraud
-            var isTokenValid = GetAccessTokenData(tokenDTO.AccessToken, existingRefreshToken.UserId, existingRefreshToken.JwtTokenId);
-            if (!isTokenValid)
-            {
-                await MarkTokenAsInvalid(existingRefreshToken);
-
-                return new TokenDTO();
-            }
+            var isTokenValid = getAccessTokenData(tokenDTO.AccessToken, existingRefreshToken.UserId, existingRefreshToken.JwtTokenId);
+            if (!isTokenValid) return new TokenDTO();
 
             // When someone tries to use not valid refresh token, fraud possible
             if (!existingRefreshToken.IsValid)
@@ -143,58 +143,63 @@ namespace MagicVilla_VillaAPI.Repository
                 //_db.UpdateRange(chainRecords);
                 //_db.SaveChanges();
 
-                await MarkAllTokenInChainAsInvalid(existingRefreshToken.UserId, existingRefreshToken.JwtTokenId);
+                await markAllTokenInChainAsInvalid(existingRefreshToken.UserId, existingRefreshToken.JwtTokenId);
+                await transaction.CommitAsync();
 
                 return new TokenDTO();
             }
 
             // If just expired then mark as invalid and return empty
-            if (existingRefreshToken.ExpiresAt < DateTime.UtcNow)
+            if (existingRefreshToken.ExpiresAt <= DateTime.UtcNow)
             {
-                await MarkTokenAsInvalid(existingRefreshToken);
-
+                await markTokenAsInvalid(existingRefreshToken);
+                await transaction.CommitAsync();
                 return new TokenDTO();
             }
 
-            // replace old refresh with a new one with updated expire date
-            var newRefreshToken = await CreateNewRefreshToken(existingRefreshToken.UserId, existingRefreshToken.JwtTokenId);
-
-            // revoke existing refresh token
-            await MarkTokenAsInvalid(existingRefreshToken);
-
-            // generate new access token
             var applicationUser = _db.ApplicationUsers.FirstOrDefault(u => u.Id == existingRefreshToken.UserId);
-            if (applicationUser == null)
-                return new TokenDTO();
-
-            var newAccessToken = await GetAccessToken(applicationUser, existingRefreshToken.JwtTokenId);
-
-            return new TokenDTO()
+            if (applicationUser == null) return new TokenDTO();
+            // Consume once in the database before issuing a replacement. A crash fails closed and requires login.
+            var now = DateTime.UtcNow;
+            var consumed = await _db.RefreshTokens.Where(t => t.Id == existingRefreshToken.Id && t.IsValid && t.ExpiresAt > now)
+                .ExecuteUpdateAsync(update => update.SetProperty(t => t.IsValid, false));
+            if (consumed != 1)
             {
-                AccessToken = newAccessToken,
-                RefreshToken = newRefreshToken,
-            };
+                await markAllTokenInChainAsInvalid(existingRefreshToken.UserId, existingRefreshToken.JwtTokenId);
+                await transaction.CommitAsync();
+                return new TokenDTO();
+            }
+            var access = await getAccessToken(applicationUser, existingRefreshToken.JwtTokenId);
+            var refresh = await createNewRefreshToken(existingRefreshToken.UserId, existingRefreshToken.JwtTokenId);
+            await transaction.CommitAsync();
+            return new TokenDTO { AccessToken = access, RefreshToken = refresh };
         }
 
         public async Task RevokeRefreshToken(TokenDTO tokenDTO)
         {
-            var existingRefreshToken = await _db.RefreshTokens.FirstOrDefaultAsync(u => u.Refresh_Token == tokenDTO.RefreshToken);
+            if (tokenDTO == null || string.IsNullOrWhiteSpace(tokenDTO.AccessToken) || string.IsNullOrWhiteSpace(tokenDTO.RefreshToken)) return;
+
+            await using var transaction = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            var existingRefreshToken = await _db.RefreshTokens.FromSqlInterpolated(
+                $"SELECT * FROM [RefreshTokens] WITH (UPDLOCK, HOLDLOCK) WHERE [Refresh_Token] = {tokenDTO.RefreshToken}")
+                .SingleOrDefaultAsync();
             if (existingRefreshToken == null)
                 return;
 
             // Compare data from existing refresh and access token provided and
             // if there is any missmatch then we should do nothing with refresh token
-            var isTokenValid = GetAccessTokenData(tokenDTO.AccessToken, existingRefreshToken.UserId, existingRefreshToken.JwtTokenId);
+            var isTokenValid = getAccessTokenData(tokenDTO.AccessToken, existingRefreshToken.UserId, existingRefreshToken.JwtTokenId);
             if (!isTokenValid)
             {
                 return;
             }
 
-            await MarkAllTokenInChainAsInvalid(existingRefreshToken.UserId, existingRefreshToken.JwtTokenId);
+            await markAllTokenInChainAsInvalid(existingRefreshToken.UserId, existingRefreshToken.JwtTokenId);
+            await transaction.CommitAsync();
         }
 
 
-        private async Task<string> GetAccessToken(ApplicationUser user, string jwtTokenId)
+        private async Task<string> getAccessToken(ApplicationUser user, string jwtTokenId)
         {
             var roles = await _userManager.GetRolesAsync(user);
             var tokenHandler = new JwtSecurityTokenHandler();
@@ -221,24 +226,12 @@ namespace MagicVilla_VillaAPI.Repository
             return tokenStr;
         }
 
-        private bool GetAccessTokenData(string accessToken, string expectedUserId, string expectedTokenId)
+        private bool getAccessTokenData(string accessToken, string expectedUserId, string expectedTokenId)
         {
-            try
-            {
-                var tokenHandler = new JwtSecurityTokenHandler();
-                var jwt = tokenHandler.ReadJwtToken(accessToken);
-                var jwtTokenId = jwt.Claims.FirstOrDefault(u => u.Type == JwtRegisteredClaimNames.Jti).Value;
-                var userId = jwt.Claims.FirstOrDefault(u => u.Type == JwtRegisteredClaimNames.Sub).Value;
-
-                return userId == expectedUserId && jwtTokenId == expectedTokenId;
-
-            }
-            catch
-            {
-                return false;
-            }
+            return MagicVilla_VillaAPI.Security.TokenPairValidator.Matches(accessToken, expectedUserId, expectedTokenId, secretKey);
         }
-        private async Task<string> CreateNewRefreshToken(string userId, string tokenId)
+
+        private async Task<string> createNewRefreshToken(string userId, string tokenId)
         {
             RefreshToken refreshToken = new()
             {
@@ -254,13 +247,13 @@ namespace MagicVilla_VillaAPI.Repository
             return refreshToken.Refresh_Token;
         }
 
-        private async Task MarkAllTokenInChainAsInvalid(string userId, string tokenId)
+        private async Task markAllTokenInChainAsInvalid(string userId, string tokenId)
         {
             await _db.RefreshTokens.Where(u => u.UserId == userId && u.JwtTokenId == tokenId)
                   .ExecuteUpdateAsync(u => u.SetProperty(refreshToken => refreshToken.IsValid, false));
         }
 
-        private Task MarkTokenAsInvalid(RefreshToken refreshToken)
+        private Task markTokenAsInvalid(RefreshToken refreshToken)
         {
             refreshToken.IsValid = false;
             return _db.SaveChangesAsync();

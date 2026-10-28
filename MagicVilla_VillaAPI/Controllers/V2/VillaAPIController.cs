@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Net;
+using MagicVilla_VillaAPI.Security;
 using System.Text.Json;
 
 namespace MagicVilla_VillaAPI.Controllers.V2
@@ -71,10 +72,17 @@ namespace MagicVilla_VillaAPI.Controllers.V2
 
                 return Ok(_response);
             }
-            catch (Exception ex)
+            catch (InvalidDataException)
             {
                 _response.IsSuccess = false;
-                _response.ErrorMessages = new List<string>() { ex.ToString() };
+                _response.StatusCode = HttpStatusCode.BadRequest;
+                _response.ErrorMessages = new List<string> { "Choose a matching PNG, JPEG or WebP image no larger than 2 MB." };
+                return BadRequest(_response);
+            }
+            catch (Exception)
+            {
+                _response.IsSuccess = false;
+                _response.ErrorMessages = new List<string>() { "The operation could not be completed." };
             }
 
             return _response;
@@ -111,10 +119,17 @@ namespace MagicVilla_VillaAPI.Controllers.V2
 
                 return Ok(_response);
             }
-            catch (Exception ex)
+            catch (InvalidDataException)
             {
                 _response.IsSuccess = false;
-                _response.ErrorMessages = new List<string>() { ex.ToString() };
+                _response.StatusCode = HttpStatusCode.BadRequest;
+                _response.ErrorMessages = new List<string> { "Choose a matching PNG, JPEG or WebP image no larger than 2 MB." };
+                return BadRequest(_response);
+            }
+            catch (Exception)
+            {
+                _response.IsSuccess = false;
+                _response.ErrorMessages = new List<string>() { "The operation could not be completed." };
             }
 
             return _response;
@@ -167,47 +182,34 @@ namespace MagicVilla_VillaAPI.Controllers.V2
                 //};
                 Villa villa = _mapper.Map<Villa>(createDTO);
                 villa.CreatedDate = DateTime.Now;
-                await _dbVilla.CreateAsync(villa);
-
-                if (createDTO.Image != null)
+                var webRoot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+                var imagePath = createDTO.Image == null ? null : VillaImageStorage.Save(createDTO.Image, webRoot);
+                var imageBaseUrl = $"{Request.Scheme}://{Request.Host}{Request.PathBase}";
+                villa.ImageUrl = imagePath == null ? "https://placehold.co/600x400" : imageBaseUrl + imagePath;
+                villa.ImageLocalPath = imagePath == null ? null : "wwwroot" + imagePath;
+                try { await _dbVilla.CreateAsync(villa); }
+                catch
                 {
-                    string fileName = villa.Id + Path.GetExtension(createDTO.Image.FileName);
-                    string filePath = @"wwwroot\ProductImage\" + fileName;
-
-                    var directoryLocation = Path.Combine(Directory.GetCurrentDirectory(), filePath);
-
-                    FileInfo file = new FileInfo(directoryLocation);
-
-                    if (file.Exists)
-                    {
-                        file.Delete();
-                    }
-
-                    using (var fileStream = new FileStream(directoryLocation, FileMode.Create))
-                    {
-                        createDTO.Image.CopyTo(fileStream);
-                    }
-
-                    var baseUrl = $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host.Value}{HttpContext.Request.PathBase.Value}";
-                    villa.ImageUrl = baseUrl + "/ProductImage/" + fileName;
-                    villa.ImageLocalPath = filePath;
+                    if (createDTO.Image != null) VillaImageStorage.DeleteManaged(villa.ImageLocalPath, webRoot);
+                    throw;
                 }
-                else
-                {
-                    villa.ImageUrl = "https://placehold.co/600x400";
-                }
-
-                await _dbVilla.UpdateAsync(villa);
 
                 _response.Result = _mapper.Map<VillaDTO>(villa);
                 _response.StatusCode = HttpStatusCode.Created;
 
                 return CreatedAtRoute("GetVilla", new { id = villa.Id }, _response);
             }
-            catch (Exception ex)
+            catch (InvalidDataException)
             {
                 _response.IsSuccess = false;
-                _response.ErrorMessages = new List<string>() { ex.ToString() };
+                _response.StatusCode = HttpStatusCode.BadRequest;
+                _response.ErrorMessages = new List<string> { "Choose a matching PNG, JPEG or WebP image no larger than 2 MB." };
+                return BadRequest(_response);
+            }
+            catch (Exception)
+            {
+                _response.IsSuccess = false;
+                _response.ErrorMessages = new List<string>() { "The operation could not be completed." };
             }
 
             return _response;
@@ -236,28 +238,26 @@ namespace MagicVilla_VillaAPI.Controllers.V2
                     return NotFound(_response);
                 }
 
-                if (!string.IsNullOrEmpty(villa.ImageLocalPath))
-                {
-                    var oldFilePathDirectory = Path.Combine(Directory.GetCurrentDirectory(), villa.ImageLocalPath);
-                    FileInfo file = new FileInfo(oldFilePathDirectory);
-
-                    if (file.Exists)
-                    {
-                        file.Delete();
-                    }
-                }
-
                 await _dbVilla.RemoveAsync(villa);
+                try { VillaImageStorage.DeleteManaged(villa.ImageLocalPath, Path.Combine(Directory.GetCurrentDirectory(), "wwwroot")); }
+                catch (Exception error) when (error is IOException or UnauthorizedAccessException) { /* A committed deletion can leave an orphan image for later cleanup. */ }
 
                 _response.StatusCode = HttpStatusCode.NoContent;
                 _response.IsSuccess = true;
 
                 return Ok(_response);
             }
-            catch (Exception ex)
+            catch (InvalidDataException)
             {
                 _response.IsSuccess = false;
-                _response.ErrorMessages = new List<string>() { ex.ToString() };
+                _response.StatusCode = HttpStatusCode.BadRequest;
+                _response.ErrorMessages = new List<string> { "Choose a matching PNG, JPEG or WebP image no larger than 2 MB." };
+                return BadRequest(_response);
+            }
+            catch (Exception)
+            {
+                _response.IsSuccess = false;
+                _response.ErrorMessages = new List<string>() { "The operation could not be completed." };
             }
 
             return _response;
@@ -298,46 +298,44 @@ namespace MagicVilla_VillaAPI.Controllers.V2
                 //    Sqft = updateDTO.Sqft
                 //};
                 Villa model = _mapper.Map<Villa>(updateDTO);
+                model.ImageLocalPath = villa.ImageLocalPath;
+                model.ImageUrl = villa.ImageUrl;
 
+                var webRoot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
                 if (updateDTO.Image != null)
                 {
-                    if (!string.IsNullOrEmpty(model.ImageLocalPath))
-                    {
-                        var oldFilePathDirectory = Path.Combine(Directory.GetCurrentDirectory(), model.ImageLocalPath);
-                        FileInfo file = new FileInfo(oldFilePathDirectory);
-
-                        if (file.Exists)
-                        {
-                            file.Delete();
-                        }
-                    }
-
-                    string fileName = updateDTO.Id + Path.GetExtension(updateDTO.Image.FileName);
-                    string filePath = @"wwwroot\ProductImage\" + fileName;
-
-                    var directoryLocation = Path.Combine(Directory.GetCurrentDirectory(), filePath);
-
-                    using (var fileStream = new FileStream(directoryLocation, FileMode.Create))
-                    {
-                        updateDTO.Image.CopyTo(fileStream);
-                    }
-
-                    var baseUrl = $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host.Value}{HttpContext.Request.PathBase.Value}";
-                    model.ImageUrl = baseUrl + "/ProductImage/" + fileName;
-                    model.ImageLocalPath = filePath;
+                    var imagePath = VillaImageStorage.Save(updateDTO.Image, webRoot);
+                    model.ImageUrl = $"{Request.Scheme}://{Request.Host}{Request.PathBase}" + imagePath;
+                    model.ImageLocalPath = "wwwroot" + imagePath;
                 }
-
-                await _dbVilla.UpdateAsync(model);
+                try { await _dbVilla.UpdateAsync(model); }
+                catch
+                {
+                    if (updateDTO.Image != null) VillaImageStorage.DeleteManaged(model.ImageLocalPath, webRoot);
+                    throw;
+                }
+                if (updateDTO.Image != null)
+                {
+                    try { VillaImageStorage.DeleteManaged(villa.ImageLocalPath, webRoot); }
+                    catch (Exception error) when (error is IOException or UnauthorizedAccessException) { /* Preserve the updated villa when old-image cleanup is unavailable. */ }
+                }
 
                 _response.StatusCode = HttpStatusCode.NoContent;
                 _response.IsSuccess = true;
 
                 return Ok(_response);
             }
-            catch (Exception ex)
+            catch (InvalidDataException)
             {
                 _response.IsSuccess = false;
-                _response.ErrorMessages = new List<string>() { ex.ToString() };
+                _response.StatusCode = HttpStatusCode.BadRequest;
+                _response.ErrorMessages = new List<string> { "Choose a matching PNG, JPEG or WebP image no larger than 2 MB." };
+                return BadRequest(_response);
+            }
+            catch (Exception)
+            {
+                _response.IsSuccess = false;
+                _response.ErrorMessages = new List<string>() { "The operation could not be completed." };
             }
 
             return _response;
@@ -350,7 +348,7 @@ namespace MagicVilla_VillaAPI.Controllers.V2
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> UpdatePartialVilla(int id, JsonPatchDocument<VillaUpdateDTO> patchDTO)
         {
-            if (patchDTO == null || id == 0)
+            if (id <= 0 || !VillaPatchPolicy.Allows(patchDTO))
             {
                 return BadRequest();
             }
@@ -374,7 +372,7 @@ namespace MagicVilla_VillaAPI.Controllers.V2
 
             patchDTO.ApplyTo(villaDTO, ModelState);
 
-            if (!ModelState.IsValid)
+            if (!TryValidateModel(villaDTO) || villaDTO.Id != id)
             {
                 return BadRequest(ModelState);
             }
@@ -391,6 +389,8 @@ namespace MagicVilla_VillaAPI.Controllers.V2
             //    Sqft = villaDTO.Sqft
             //};
             Villa model = _mapper.Map<Villa>(villaDTO);
+            model.ImageLocalPath = villa.ImageLocalPath;
+            model.ImageUrl = villa.ImageUrl;
 
             await _dbVilla.UpdateAsync(model);
 
