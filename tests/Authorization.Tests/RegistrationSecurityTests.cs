@@ -1,4 +1,3 @@
-using AutoMapper;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Moq;
@@ -78,9 +77,8 @@ public class RegistrationSecurityTests
 
     private static UserRepository createService(Mock<UserManager<ApplicationUser>> users, Mock<RoleManager<IdentityRole>> roles)
     {
-        var mapper = new Mock<IMapper>();
-        mapper.Setup(m => m.Map<UserDTO>(It.IsAny<object>())).Returns(new UserDTO());
+        var mapper = new MagicVilla_VillaAPI.MappingConfig();
         var configuration = new ConfigurationBuilder().Build();
-        return new UserRepository(null, users.Object, roles.Object, mapper.Object, configuration);
+        return new UserRepository(null, users.Object, roles.Object, mapper, configuration);
     }
 }

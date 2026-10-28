@@ -9,7 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 MagicVilla_Web.Configuration.MvcConfiguration.AddSecureMvc(builder.Services);
 
-builder.Services.AddAutoMapper(typeof(MappingConfig));
+builder.Services.AddSingleton<MappingConfig>();
 
 builder.Services.AddHttpClient<IVillaService, VillaService>();
 builder.Services.AddScoped<IVillaService, VillaService>();

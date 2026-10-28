@@ -1,4 +1,4 @@
-﻿using AutoMapper;
+using MagicVilla_Web;
 using MagicVilla_Utility;
 using MagicVilla_Web.Models;
 using MagicVilla_Web.Models.Dto;
@@ -12,8 +12,8 @@ namespace MagicVilla_Web.Controllers
     public class VillaController : Controller
     {
         private readonly IVillaService _villaService;
-        private readonly IMapper _mapper;
-        public VillaController(IVillaService villaService, IMapper mapper)
+        private readonly MappingConfig _mapper;
+        public VillaController(IVillaService villaService, MappingConfig mapper)
         {
             _villaService = villaService;
             _mapper = mapper;
@@ -70,7 +70,7 @@ namespace MagicVilla_Web.Controllers
             if (response != null && response.IsSuccess)
             {
                 VillaDTO model = JsonConvert.DeserializeObject<VillaDTO>(Convert.ToString(response.Result));
-                return View(_mapper.Map<VillaUpdateDTO>(model));
+                return View(_mapper.ToVillaUpdateDTO(model));
             }
             else
             {

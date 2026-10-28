@@ -1,5 +1,4 @@
 using System.Linq.Expressions;
-using AutoMapper;
 using MagicVilla_VillaAPI;
 using MagicVilla_VillaAPI.Models;
 using MagicVilla_VillaAPI.Models.Dto;
@@ -20,7 +19,7 @@ namespace Authorization.Tests;
 public class VillaMutationTests : IDisposable
 {
     private readonly Mock<IVillaRepository> repository = new(MockBehavior.Strict);
-    private readonly IMapper mapper = new MapperConfiguration(options => options.AddProfile<MappingConfig>()).CreateMapper();
+    private readonly MappingConfig mapper = new MappingConfig();
     private readonly ServiceProvider services;
     private readonly Villa stored = new() { Id = 1, Name = "Stored", Rate = 200, Occupancy = 4, Sqft = 500,
         Details = "Description", Amenity = "Pool", ImageLocalPath = "wwwroot/ProductImage/stored.png", ImageUrl = "https://example.invalid/image.png" };
@@ -77,7 +76,7 @@ public class VillaMutationTests : IDisposable
     {
         Villa updated = null;
         repository.Setup(r => r.UpdateAsync(It.IsAny<Villa>())).Callback<Villa>(v => updated = v).ReturnsAsync((Villa v) => v);
-        var dto = mapper.Map<VillaUpdateDTO>(stored); dto.ImageLocalPath = "../../outside.png"; dto.ImageUrl = "https://other.example.invalid/";
+        var dto = mapper.ToVillaUpdateDTO(stored); dto.ImageLocalPath = "../../outside.png"; dto.ImageUrl = "https://other.example.invalid/";
         var controller = create(version);
         var result = version == 1 ? await ((V1)controller).UpdateVilla(1, dto) : await ((V2)controller).UpdateVilla(1, dto);
         Assert.IsType<OkObjectResult>(result.Result);

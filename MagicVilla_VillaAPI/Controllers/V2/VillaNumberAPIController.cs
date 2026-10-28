@@ -1,4 +1,5 @@
-﻿using AutoMapper;
+using Asp.Versioning;
+using MagicVilla_VillaAPI;
 using MagicVilla_VillaAPI.Models;
 using MagicVilla_VillaAPI.Models.Dto;
 using MagicVilla_VillaAPI.Repository.IRepository;
@@ -16,9 +17,9 @@ namespace MagicVilla_VillaAPI.Controllers.v2
         protected APIResponse _response;
         private readonly IVillaNumberRepository _dbVillaNumber;
         private readonly IVillaRepository _dbVilla;
-        private readonly IMapper _mapper;
+        private readonly MappingConfig _mapper;
         public VillaNumberAPIController(IVillaNumberRepository dbVillaNumber,
-               IVillaRepository dbVilla, IMapper mapper)
+               IVillaRepository dbVilla, MappingConfig mapper)
         {
             _dbVillaNumber = dbVillaNumber;
             _dbVilla = dbVilla;
@@ -42,7 +43,7 @@ namespace MagicVilla_VillaAPI.Controllers.v2
             {
                 IEnumerable<VillaNumber> villaNumberList = await _dbVillaNumber.GetAllAsync(includeProperties: "Villa");
 
-                _response.Result = _mapper.Map<List<VillaNumberDTO>>(villaNumberList);
+                _response.Result = _mapper.ToVillaNumberDTOList(villaNumberList);
                 _response.StatusCode = HttpStatusCode.OK;
 
                 return Ok(_response);
@@ -76,7 +77,7 @@ namespace MagicVilla_VillaAPI.Controllers.v2
                     return NotFound(_response);
                 }
 
-                _response.Result = _mapper.Map<VillaNumberDTO>(villaNumber);
+                _response.Result = _mapper.ToVillaNumberDTO(villaNumber);
                 _response.StatusCode = HttpStatusCode.OK;
 
                 return Ok(_response);
@@ -127,11 +128,11 @@ namespace MagicVilla_VillaAPI.Controllers.v2
                     return BadRequest(_response);
                 }
 
-                VillaNumber villaNumber = _mapper.Map<VillaNumber>(createDTO);
+                VillaNumber villaNumber = _mapper.ToVillaNumber(createDTO);
                 villaNumber.CreatedDate = DateTime.Now;
                 await _dbVillaNumber.CreateAsync(villaNumber);
 
-                _response.Result = _mapper.Map<VillaNumberDTO>(villaNumber);
+                _response.Result = _mapper.ToVillaNumberDTO(villaNumber);
                 _response.StatusCode = HttpStatusCode.Created;
 
                 return CreatedAtRoute("GetVilla", new { id = villaNumber.VillaNo }, _response);
@@ -207,7 +208,7 @@ namespace MagicVilla_VillaAPI.Controllers.v2
                     return BadRequest(_response);
                 }
 
-                VillaNumber villaNumber = _mapper.Map<VillaNumber>(updateDTO);
+                VillaNumber villaNumber = _mapper.ToVillaNumber(updateDTO);
                 await _dbVillaNumber.UpdateAsync(villaNumber);
 
                 _response.StatusCode = HttpStatusCode.NoContent;

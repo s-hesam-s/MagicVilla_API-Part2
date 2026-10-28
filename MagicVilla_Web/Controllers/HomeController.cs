@@ -1,4 +1,4 @@
-using AutoMapper;
+using MagicVilla_Web;
 using MagicVilla_Utility;
 using MagicVilla_Web.Models;
 using MagicVilla_Web.Models.Dto;
@@ -12,8 +12,8 @@ namespace MagicVilla_Web.Controllers
 	public class HomeController : Controller
 	{
 		private readonly IVillaService _villaService;
-		private readonly IMapper _mapper;
-		public HomeController(IVillaService villaService, IMapper mapper)
+		private readonly MappingConfig _mapper;
+		public HomeController(IVillaService villaService, MappingConfig mapper)
 		{
 			_villaService = villaService;
 			_mapper = mapper;

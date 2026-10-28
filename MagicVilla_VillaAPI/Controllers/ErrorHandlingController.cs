@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Asp.Versioning;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
