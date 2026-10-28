@@ -27,6 +27,6 @@ This repository is an educational API/MVC sample. Source controls and isolated t
 
 ## Verification limits
 
-Tests use strict repository mocks, real MVC binding/validation and authorization policies, in-process HTTP antiforgery checks with ephemeral keys, and signed/malformed JWT fixtures. They do not start either original host, migrate SQL, contact a live API or certify deployed security. Runtime/package upgrades are a separate change group.
+Tests use strict repository mocks, real MVC binding/validation and authorization policies, in-process HTTP antiforgery checks with ephemeral keys, and signed/malformed JWT fixtures. They do not start either original host, migrate SQL, contact a live API or certify deployed security. The completed source migration and package changes are documented in [RUNTIME.md](RUNTIME.md); installed and deployed runtime patches must still be checked independently.
 
 Use HTTPS for local MVC sign-in: Secure token cookies are intentionally not sent over plain HTTP.
