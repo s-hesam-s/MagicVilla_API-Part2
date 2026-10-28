@@ -52,8 +52,10 @@ sequenceDiagram
     Repo-->>Client: new token pair through UsersAuth
 ```
 
-The MVC [TokenProvider](../MagicVilla_Web/Services/TokenProvider.cs) writes access/refresh tokens to browser cookies. This describes the mechanism; it does not certify hardened browser token storage, refresh-chain concurrency or production security.
+The MVC [TokenProvider](../MagicVilla_Web/Services/TokenProvider.cs) writes access/refresh tokens to browser cookies. Token cookies now use HttpOnly, Secure and SameSite=Lax. Refresh/revoke validate the signed pair and use a SQL transaction/locking path; deployed browser behavior and SQL concurrency remain unverified.
 
 ## Runtime boundaries
 
-[Program](../MagicVilla_VillaAPI/Program.cs) applies pending migrations at API startup. A build/test command does not run that host. Existing tests focus on registration roles and failure handling; successful CI does not establish a live refresh/revoke integration, complete CRUD coverage or production readiness. Configuration guidance is in [SECURITY-SETUP.md](../SECURITY-SETUP.md).
+[Program](../MagicVilla_VillaAPI/Program.cs) applies pending migrations at API startup. A build/test command does not run that host. Tests cover registration roles, JWT pair validation, mutation policies, patch/storage fields, API failures and in-process MVC antiforgery; successful CI does not establish a live refresh/revoke integration, complete CRUD coverage or production readiness. Configuration guidance is in [SECURITY-SETUP.md](../SECURITY-SETUP.md).
+
+See [Security boundaries](SECURITY-BOUNDARIES.md) for token expiry/rotation, uploads and verification limits.

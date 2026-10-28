@@ -29,7 +29,7 @@ namespace MagicVilla_Web.Services
                     AccessToken = accessToken,
                     RefreshToken = refreshToken
                 };
-                return hasAccessToken ? tokenDTO : null;
+                return hasAccessToken && hasRefreshToken ? tokenDTO : null;
             }
             catch (Exception ex)
             {
@@ -39,7 +39,7 @@ namespace MagicVilla_Web.Services
 
         public void SetToken(TokenDTO tokenDTO)
         {
-            var cookieOptions = new CookieOptions { Expires = DateTime.UtcNow.AddDays(60) };
+            var cookieOptions = new CookieOptions { Expires = DateTime.UtcNow.AddDays(30), HttpOnly = true, Secure = true, SameSite = SameSiteMode.Lax, Path = "/" };
             _contextAccessor.HttpContext?.Response.Cookies.Append(SD.AccessToken, tokenDTO.AccessToken, cookieOptions);
             _contextAccessor.HttpContext?.Response.Cookies.Append(SD.RefreshToken, tokenDTO.RefreshToken, cookieOptions);
         }

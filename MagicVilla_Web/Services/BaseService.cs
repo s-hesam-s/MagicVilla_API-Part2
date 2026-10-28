@@ -47,7 +47,7 @@ namespace MagicVilla_Web.Services
 
                 HttpResponseMessage httpResponseMessage = null;
 
-                httpResponseMessage = await SendWithRefreshTokenAsync(client, messageFactory, withBearer);
+                httpResponseMessage = await sendWithRefreshTokenAsync(client, messageFactory, withBearer);
 
                 APIResponse FinalApiResponse = new()
                 {
@@ -73,13 +73,15 @@ namespace MagicVilla_Web.Services
                         default:
                             var apiContent = await httpResponseMessage.Content.ReadAsStringAsync();
                             FinalApiResponse.IsSuccess = true;
-                            FinalApiResponse = JsonConvert.DeserializeObject<APIResponse>(apiContent);
+                            FinalApiResponse = JsonConvert.DeserializeObject<APIResponse>(apiContent) ?? new APIResponse
+                            { IsSuccess = false, ErrorMessages = new List<string> { "The API returned no response." } };
                             break;
                     }
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
-                    FinalApiResponse.ErrorMessages = new List<string>() { "Error Encountered", e.Message.ToString() };
+                    FinalApiResponse.IsSuccess = false;
+                    FinalApiResponse.ErrorMessages = new List<string>() { "The API response could not be read." };
                 }
                 var res = JsonConvert.SerializeObject(FinalApiResponse);
                 var returnObj = JsonConvert.DeserializeObject<T>(res);
@@ -89,11 +91,11 @@ namespace MagicVilla_Web.Services
             {
                 throw;
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 var dto = new APIResponse
                 {
-                    ErrorMessages = new List<string> { Convert.ToString(e.Message) },
+                    ErrorMessages = new List<string> { "The API request could not be completed." },
                     IsSuccess = false
                 };
                 var res = JsonConvert.SerializeObject(dto);
@@ -102,7 +104,7 @@ namespace MagicVilla_Web.Services
             }
         }
 
-        private async Task<HttpResponseMessage> SendWithRefreshTokenAsync(HttpClient httpClient,
+        private async Task<HttpResponseMessage> sendWithRefreshTokenAsync(HttpClient httpClient,
             Func<HttpRequestMessage> httpRequestMessageFactory, bool withBearer = true)
         {
             if (!withBearer)
@@ -127,7 +129,7 @@ namespace MagicVilla_Web.Services
                     if (!response.IsSuccessStatusCode && response.StatusCode == HttpStatusCode.Unauthorized)
                     {
                         //GENERATE NEW Token from Refresh token / Sign in with that new token and then retry
-                        await InvokeRefreshTokenEndpoint(httpClient, tokenDTO.AccessToken, tokenDTO.RefreshToken);
+                        await invokeRefreshTokenEndpoint(httpClient, tokenDTO?.AccessToken, tokenDTO?.RefreshToken);
                         response = await httpClient.SendAsync(httpRequestMessageFactory());
                         return response;
                     }
@@ -143,7 +145,7 @@ namespace MagicVilla_Web.Services
                     if (httpRequestException.StatusCode == System.Net.HttpStatusCode.Unauthorized)
                     {
                         // refresh token and retry the request
-                        await InvokeRefreshTokenEndpoint(httpClient, tokenDTO.AccessToken, tokenDTO.RefreshToken);
+                        await invokeRefreshTokenEndpoint(httpClient, tokenDTO?.AccessToken, tokenDTO?.RefreshToken);
                         return await httpClient.SendAsync(httpRequestMessageFactory());
                     }
                     throw;
@@ -151,8 +153,10 @@ namespace MagicVilla_Web.Services
             }
         }
 
-        private async Task InvokeRefreshTokenEndpoint(HttpClient httpClient, string existingAccessToken, string existingRefreshToken)
+        private async Task invokeRefreshTokenEndpoint(HttpClient httpClient, string? existingAccessToken, string? existingRefreshToken)
         {
+            if (string.IsNullOrWhiteSpace(existingAccessToken) || string.IsNullOrWhiteSpace(existingRefreshToken))
+                throw new AuthException();
             HttpRequestMessage message = new();
 
             message.Headers.Add("Accept", "application/json");
@@ -182,13 +186,13 @@ namespace MagicVilla_Web.Services
                 if (tokenDto != null && !string.IsNullOrEmpty(tokenDto.AccessToken))
                 {
                     //New method to sign in with the new token that we receive
-                    await SignInWithNewTokens(tokenDto);
+                    await signInWithNewTokens(tokenDto);
                     httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokenDto.AccessToken);
                 }
             }
         }
 
-        private async Task SignInWithNewTokens(TokenDTO tokenDTO)
+        private async Task signInWithNewTokens(TokenDTO tokenDTO)
         {
             var handler = new JwtSecurityTokenHandler();
             var jwt = handler.ReadJwtToken(tokenDTO.AccessToken);

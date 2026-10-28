@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Net;
+using MagicVilla_VillaAPI.Security;
 using System.Text.Json;
 
 namespace MagicVilla_VillaAPI.Controllers.V1
@@ -71,10 +72,10 @@ namespace MagicVilla_VillaAPI.Controllers.V1
 
                 return Ok(_response);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 _response.IsSuccess = false;
-                _response.ErrorMessages = new List<string>() { ex.ToString() };
+                _response.ErrorMessages = new List<string>() { "The operation could not be completed." };
             }
 
             return _response;
@@ -111,10 +112,10 @@ namespace MagicVilla_VillaAPI.Controllers.V1
 
                 return Ok(_response);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 _response.IsSuccess = false;
-                _response.ErrorMessages = new List<string>() { ex.ToString() };
+                _response.ErrorMessages = new List<string>() { "The operation could not be completed." };
             }
 
             return _response;
@@ -166,6 +167,7 @@ namespace MagicVilla_VillaAPI.Controllers.V1
                 //    Sqft = createDTO.Sqft
                 //};
                 Villa villa = _mapper.Map<Villa>(createDTO);
+                villa.ImageLocalPath = null;
                 villa.CreatedDate = DateTime.Now;
                 await _dbVilla.CreateAsync(villa);
 
@@ -174,10 +176,10 @@ namespace MagicVilla_VillaAPI.Controllers.V1
 
                 return CreatedAtRoute("GetVilla", new { id = villa.Id }, _response);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 _response.IsSuccess = false;
-                _response.ErrorMessages = new List<string>() { ex.ToString() };
+                _response.ErrorMessages = new List<string>() { "The operation could not be completed." };
             }
 
             return _response;
@@ -213,10 +215,10 @@ namespace MagicVilla_VillaAPI.Controllers.V1
 
                 return Ok(_response);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 _response.IsSuccess = false;
-                _response.ErrorMessages = new List<string>() { ex.ToString() };
+                _response.ErrorMessages = new List<string>() { "The operation could not be completed." };
             }
 
             return _response;
@@ -257,6 +259,8 @@ namespace MagicVilla_VillaAPI.Controllers.V1
                 //    Sqft = updateDTO.Sqft
                 //};
                 Villa model = _mapper.Map<Villa>(updateDTO);
+                model.ImageLocalPath = villa.ImageLocalPath;
+                model.ImageUrl = villa.ImageUrl;
                 await _dbVilla.UpdateAsync(model);
 
                 _response.StatusCode = HttpStatusCode.NoContent;
@@ -264,10 +268,10 @@ namespace MagicVilla_VillaAPI.Controllers.V1
 
                 return Ok(_response);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 _response.IsSuccess = false;
-                _response.ErrorMessages = new List<string>() { ex.ToString() };
+                _response.ErrorMessages = new List<string>() { "The operation could not be completed." };
             }
 
             return _response;
@@ -280,7 +284,7 @@ namespace MagicVilla_VillaAPI.Controllers.V1
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> UpdatePartialVilla(int id, JsonPatchDocument<VillaUpdateDTO> patchDTO)
         {
-            if (patchDTO == null || id == 0)
+            if (id <= 0 || !VillaPatchPolicy.Allows(patchDTO))
             {
                 return BadRequest();
             }
@@ -304,7 +308,7 @@ namespace MagicVilla_VillaAPI.Controllers.V1
 
             patchDTO.ApplyTo(villaDTO, ModelState);
 
-            if (!ModelState.IsValid)
+            if (!TryValidateModel(villaDTO) || villaDTO.Id != id)
             {
                 return BadRequest(ModelState);
             }
@@ -321,6 +325,8 @@ namespace MagicVilla_VillaAPI.Controllers.V1
             //    Sqft = villaDTO.Sqft
             //};
             Villa model = _mapper.Map<Villa>(villaDTO);
+            model.ImageLocalPath = villa.ImageLocalPath;
+            model.ImageUrl = villa.ImageUrl;
 
             await _dbVilla.UpdateAsync(model);
 
