@@ -1,6 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc.ApiExplorer;
+using Asp.Versioning;
+using Asp.Versioning.ApiExplorer;
 using Microsoft.Extensions.Options;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace MagicVilla_VillaAPI
@@ -22,23 +23,10 @@ namespace MagicVilla_VillaAPI
                 In = ParameterLocation.Header,
                 Scheme = "Bearer"
             });
-            options.AddSecurityRequirement(new OpenApiSecurityRequirement()
-            {
-                {
-                    new OpenApiSecurityScheme
-                    {
-                       Reference = new OpenApiReference
-                       {
-                           Type = ReferenceType.SecurityScheme,
-                           Id = "Bearer"
-                       },
-                       Scheme = "oauth2",
-                       Name = "Bearer",
-                       In = ParameterLocation.Header
-                    },
-                    new List<string>()
-                }
-            });
+            options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+    {
+        [new OpenApiSecuritySchemeReference("Bearer", document)] = new List<string>()
+    });
             foreach (var desc in provider.ApiVersionDescriptions)
             {
                 options.SwaggerDoc(desc.GroupName, new OpenApiInfo
